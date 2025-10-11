@@ -97,7 +97,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderQueue(queue) {
     currentQueue = queue;
     songQueueContainer.innerHTML = "";
-    // CAMBIO AQUÍ: Usamos .slice(1) para mostrar solo a partir del segundo elemento.
     queue.slice(1).forEach((item) => {
       const div = document.createElement("div");
       div.className = "queue-item";
@@ -213,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
               payload: { song: filename, name: myName },
             })
           );
-          renderArtists(letter);
+          renderAlphabet(); // <-- CAMBIO AQUÍ: Vuelve al selector de letra.
         }
       };
       songBrowser.appendChild(songEl);
