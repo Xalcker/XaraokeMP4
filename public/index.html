@@ -16,126 +16,68 @@
             height: 100vh; 
             overflow: hidden;
         }
-        .main-container { 
-            display: flex; 
-            gap: 2rem; 
-            width: 95%; 
-            max-width: 1400px; 
-            height: 90vh; 
-        }
-        .player-column { 
-            flex: 3; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        .sidebar-column { 
-            flex: 1; 
-            background-color: #1e1e1e; 
-            border-radius: 10px; 
-            padding: 1.5rem; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 1.5rem; 
-        }
-        video { 
-            width: 100%; 
-            height: 100%; 
-            background-color: #000; 
-            border-radius: 10px; 
-            object-fit: contain; 
-        }
-        h3 { 
-            margin-top: 0; 
-            margin-bottom: 0.5rem;
-            color: #ccc;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-        }
-        #queue-container, #browser-container {
+
+        /* --- NUEVOS ESTILOS PARA EL MODAL DE BIENVENIDA --- */
+        #welcome-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(18, 18, 18, 0.95);
             display: flex;
             flex-direction: column;
-            min-height: 0; /* Fix for flexbox overflow */
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 100;
         }
-        #queue-container {
-             flex-shrink: 1;
-        }
-        #browser-container {
-            flex-grow: 1;
-        }
-        #songQueue, #songBrowser {
-            overflow-y: auto;
-        }
-        .queue-item { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 8px; 
-            border-radius: 5px; 
-            font-size: 0.9rem;
-        }
-        .queue-item:nth-child(odd) { 
-            background-color: #282828; 
-        }
-        .queue-item .song-name { 
-            font-weight: bold; 
-        }
-        .queue-item .user-name { 
-            font-style: italic; 
-            color: #aaa; 
-            margin-left: 1rem;
-            white-space: nowrap;
-        }
-        #qr-container img { 
-            max-width: 150px; 
-            display: block; 
-            margin: 0 auto; 
-            border: 5px solid white; 
-            border-radius: 5px; 
-        }
-        #qr-container p {
-             text-align: center; 
-             font-size: 0.8rem;
-             color: #aaa;
-             margin-bottom: 0.5rem;
-        }
-
-        /* Estilos para el nuevo explorador */
-        .browser-item, .back-btn { 
-            padding: 8px 12px; 
-            background-color: #2c2c2c; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            text-align: left; 
-            font-size: 0.9rem;
-            margin-bottom: 4px;
-        }
-        .browser-item:hover, .back-btn:hover { 
-            background-color: #3f3f3f; 
-        }
-        .alphabet-container { 
-            display: flex; 
-            flex-wrap: wrap; 
-            gap: 6px; 
-        }
-        .alphabet-item { 
-            padding: 5px 9px; 
-            background-color: #2c2c2c; 
-            border-radius: 5px; 
+        #welcome-modal h1 { font-size: 3rem; margin-bottom: 0; }
+        #welcome-modal p { font-size: 1.2rem; color: #aaa; }
+        #start-btn {
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            background-color: #1DB954;
+            color: white;
             cursor: pointer;
-            font-weight: bold;
+            margin-top: 20px;
+            transition: background-color 0.2s;
         }
-        .alphabet-item:hover { 
-            background-color: #3f3f3f; 
-        }
-        .back-btn { 
-            font-weight: bold; 
-            background-color: #1DB954; 
-        }
+        #start-btn:hover { background-color: #1ed760; }
+        .hidden { display: none !important; }
+
+        /* --- (Resto de tus estilos no cambian) --- */
+        .main-container { display: flex; gap: 2rem; width: 95%; max-width: 1400px; height: 90vh; }
+        .player-column { flex: 3; display: flex; flex-direction: column; }
+        .sidebar-column { flex: 1; background-color: #1e1e1e; border-radius: 10px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
+        video { width: 100%; height: 100%; background-color: #000; border-radius: 10px; object-fit: contain; }
+        h3 { margin-top: 0; margin-bottom: 0.5rem; color: #ccc; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px; }
+        #queue-container, #browser-container { display: flex; flex-direction: column; min-height: 0; }
+        #queue-container { flex-shrink: 1; }
+        #browser-container { flex-grow: 1; }
+        #songQueue, #songBrowser { overflow-y: auto; }
+        .queue-item { display: flex; justify-content: space-between; padding: 8px; border-radius: 5px; font-size: 0.9rem; }
+        .queue-item:nth-child(odd) { background-color: #282828; }
+        .queue-item .song-name { font-weight: bold; }
+        .queue-item .user-name { font-style: italic; color: #aaa; margin-left: 1rem; white-space: nowrap; }
+        #qr-container img { max-width: 150px; display: block; margin: 0 auto; border: 5px solid white; border-radius: 5px; }
+        #qr-container p { text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem; }
+        .browser-item, .back-btn { padding: 8px 12px; background-color: #2c2c2c; border-radius: 5px; cursor: pointer; text-align: left; font-size: 0.9rem; margin-bottom: 4px; }
+        .browser-item:hover, .back-btn:hover { background-color: #3f3f3f; }
+        .alphabet-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .alphabet-item { padding: 5px 9px; background-color: #2c2c2c; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .alphabet-item:hover { background-color: #3f3f3f; }
+        .back-btn { font-weight: bold; background-color: #1DB954; }
     </style>
 </head>
 <body>
+    <div id="welcome-modal">
+        <h1>Xaraoke 🎤</h1>
+        <p>Haz clic para iniciar la sesión de karaoke</p>
+        <button id="start-btn">Comenzar</button>
+    </div>
 
-    <div class="main-container">
+    <div class="main-container hidden">
         <div class="player-column">
             <video id="karaokePlayer" controls autoplay></video>
         </div>
@@ -145,20 +87,16 @@
                 <p>Escanea para añadir canciones</p>
                 <img id="qrCode" src="" alt="QR Code">
             </div>
-
             <div id="queue-container">
                 <h3>Cola de reproducción</h3>
                 <div id="songQueue"></div>
             </div>
-
             <div id="browser-container">
                 <h3>Explorador de Canciones</h3>
                 <div id="songBrowser"></div>
             </div>
         </div>
     </div>
-
     <script src="karaoke.js"></script>
-
 </body>
 </html>

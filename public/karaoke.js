@@ -1,4 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // --- NUEVOS SELECTORES PARA EL MODAL ---
+  const welcomeModal = document.getElementById("welcome-modal");
+  const startBtn = document.getElementById("start-btn");
+  const mainContainer = document.querySelector(".main-container");
+
+  // Selectores de la aplicación principal
   const player = document.getElementById("karaokePlayer");
   const songQueueContainer = document.getElementById("songQueue");
   const qrCodeImg = document.getElementById("qrCode");
@@ -8,6 +14,26 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentQueue = [];
   let ws;
   let lastTimeUpdate = 0;
+
+  // --- NUEVO EVENT LISTENER PARA EL BOTÓN DE INICIO ---
+  startBtn.addEventListener("click", () => {
+    // Oculta el modal y muestra la aplicación
+    welcomeModal.classList.add("hidden");
+    mainContainer.classList.remove("hidden");
+
+    // "Desbloquea" el audio intentando reproducir y pausar el video vacío.
+    // Esto le da permiso a la página para reproducir audio más tarde.
+    player.play().catch((error) => {
+      console.log(
+        "El navegador necesita una interacción para empezar. Permiso concedido."
+      );
+    });
+    player.pause();
+
+    // Ahora que tenemos la interacción, inicializamos la app.
+    connectWebSocket();
+    initialize();
+  });
 
   function connectWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -35,17 +61,13 @@ document.addEventListener("DOMContentLoaded", () => {
     switch (payload.action) {
       case "playPause":
         if (player.src) {
-          // Solo funciona si hay una canción cargada
           if (player.paused) player.play();
           else player.pause();
         }
         break;
       case "skip":
-        // --- CAMBIO Y CORRECCIÓN AQUÍ ---
-        // 1. Detenemos el reproductor actual para que el salto sea inmediato.
         player.pause();
-        player.src = ""; // Limpiamos la fuente para asegurar que se detenga.
-        // 2. Le pedimos al servidor que actualice la cola y pase a la siguiente.
+        player.src = "";
         ws.send(JSON.stringify({ type: "playNext" }));
         break;
     }
@@ -186,6 +208,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  connectWebSocket();
-  initialize();
+  // YA NO INICIAMOS LA APP AQUÍ, SINO EN EL CLIC DEL BOTÓN
 });

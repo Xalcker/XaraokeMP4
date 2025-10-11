@@ -11,7 +11,7 @@ Un reproductor de karaoke interactivo basado en la web, construido con HTML5, No
 * **Explorador de Canciones Alfabético:** Navega por la biblioteca de canciones de forma intuitiva, filtrando por artista y luego seleccionando la canción.
 * **Cola de Reproducción Compartida:** Múltiples usuarios pueden ver y añadir canciones a la misma cola de reproducción en tiempo real.
 * **Controles de Reproducción:** Los controles remotos pueden pausar, reanudar y saltar canciones.
-* **Notificaciones Inteligentes:** El control remoto vibra y suena para avisar al usuario cuando su canción está a punto de empezar.
+* **Notificaciones Inteligentes:** El control remoto vibra y suena para avisar al usuario cuando su canción está a punto de empezar. (En pruebas)
 
 ---
 ## 🛠️ Stack Tecnológico
@@ -38,7 +38,6 @@ Sigue estos pasos para ejecutar el proyecto en tu máquina local.
     ```bash
     git clone https://github.com/Xalcker/XaraokeMP4.git
     ```
-    También puedes hacer clic en [este enlace](https://github.com/Xalcker/XaraokeMP4) para ver el repositorio.
 2.  **Navega al directorio del proyecto:**
     ```bash
     cd XaraokeMP4
