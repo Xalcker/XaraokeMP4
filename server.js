@@ -72,28 +72,40 @@ app.get("/api/song-url", async (req, res) => {
   }
 });
 
+// --- ¡CAMBIO CRÍTICO AQUÍ! ---
 app.get("/api/qr", (req, res) => {
-  const networkInterfaces = os.networkInterfaces();
-  let localIp = "localhost";
-  const candidates = [];
-  for (const name of Object.keys(networkInterfaces)) {
-    for (const net of networkInterfaces[name]) {
-      if (net.family === "IPv4" && !net.internal) candidates.push(net.address);
+  let baseUrl;
+  // Si estamos en Render (o un entorno con EXTERNAL_HOSTNAME), usamos esa URL
+  if (process.env.EXTERNAL_HOSTNAME) {
+    baseUrl = `https://${process.env.EXTERNAL_HOSTNAME}`;
+  } else {
+    // De lo contrario, usamos la lógica de IP local para desarrollo
+    const networkInterfaces = os.networkInterfaces();
+    let localIp = "localhost";
+    const candidates = [];
+    for (const name of Object.keys(networkInterfaces)) {
+      for (const net of networkInterfaces[name]) {
+        if (net.family === "IPv4" && !net.internal)
+          candidates.push(net.address);
+      }
     }
+    if (candidates.length > 0) {
+      localIp =
+        candidates.find((ip) => ip.startsWith("192.168.")) ||
+        candidates.find((ip) => ip.startsWith("10.")) ||
+        candidates[0];
+    }
+    baseUrl = `http://${localIp}:${PORT}`;
   }
-  if (candidates.length > 0) {
-    localIp =
-      candidates.find((ip) => ip.startsWith("192.168.")) ||
-      candidates.find((ip) => ip.startsWith("10.")) ||
-      candidates[0];
-  }
-  const remoteUrl = `http://${localIp}:${PORT}/remote.html`;
+
+  const remoteUrl = `${baseUrl}/remote.html`;
   console.log(`✅ URL del control remoto generada: ${remoteUrl}`);
   QRCode.toDataURL(remoteUrl, (err, url) => {
     if (err) res.status(500).send("Error generando QR");
     else res.send({ qrUrl: url, remoteUrl });
   });
 });
+// --- FIN DEL CAMBIO CRÍTICO ---
 
 app.get("/favicon.ico", (req, res) => res.status(204).send());
 app.use(express.static(path.join(__dirname, "public")));
@@ -130,7 +142,6 @@ wss.on("connection", (ws) => {
         if (songQueue.length > 0) songQueue.shift();
         updateQueue = true;
         break;
-      // NUEVO: Reenvía las acciones de control a todos los clientes.
       case "controlAction":
         wss.broadcast(JSON.stringify(data));
         break;
