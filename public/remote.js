@@ -1,11 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Selectores del modal y contenido principal
   const nameModal = document.getElementById("name-modal");
   const mainContent = document.getElementById("main-content");
   const initialNameInput = document.getElementById("initialNameInput");
   const saveNameBtn = document.getElementById("saveNameBtn");
-
-  // Selectores de la interfaz principal
   const userNameDisplay = document.getElementById("userNameDisplay");
   const changeNameBtn = document.getElementById("changeNameBtn");
   const songQueueContainer = document.getElementById("songQueue");
@@ -15,13 +12,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const playPauseBtn = document.getElementById("playPauseBtn");
   const skipBtn = document.getElementById("skipBtn");
 
-  let songData = {};
-  let ws;
-  let myName = "";
-  let upNextSongId = null;
-  let currentQueue = [];
+  let songData = {},
+    ws,
+    myName = "",
+    upNextSongId = null,
+    currentQueue = [];
 
-  // --- LÓGICA DE GESTIÓN DE NOMBRE ---
   function setupName() {
     myName = localStorage.getItem("karaokeUserName") || "";
     if (myName) {
@@ -39,11 +35,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (name) {
       localStorage.setItem("karaokeUserName", name);
       setupName();
-      if (!ws) {
-        initializeMainApp();
-      } else if (ws.readyState === WebSocket.OPEN) {
+      if (!ws) initializeMainApp();
+      else if (ws.readyState === WebSocket.OPEN)
         ws.send(JSON.stringify({ type: "getQueue" }));
-      }
     } else {
       alert("Por favor, introduce un nombre válido.");
     }
@@ -54,15 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
     nameModal.classList.remove("hidden");
   });
 
-  // --- LÓGICA DE WEBSOCKET Y APP ---
   function connectWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${protocol}://${window.location.host}`);
     ws.onopen = () => console.log("Remoto conectado al WebSocket");
-    ws.onclose = () => {
-      console.log("Remoto desconectado. Intentando reconectar...");
-      setTimeout(connectWebSocket, 3000);
-    };
+    ws.onclose = () => setTimeout(connectWebSocket, 3000);
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "queueUpdate") {
@@ -107,7 +97,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderQueue(queue) {
     currentQueue = queue;
     songQueueContainer.innerHTML = "";
-    queue.forEach((item) => {
+    // CAMBIO AQUÍ: Usamos .slice(1) para mostrar solo a partir del segundo elemento.
+    queue.slice(1).forEach((item) => {
       const div = document.createElement("div");
       div.className = "queue-item";
       div.innerHTML = `<span><b>${item.song.replace(".mp4", "")}</b> (${
@@ -237,10 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
     songBrowser.appendChild(backBtn);
   }
 
-  // --- CAMBIOS AQUÍ: Se eliminaron las confirmaciones ---
   playPauseBtn.addEventListener("click", () => {
-    if (currentQueue.length === 0) return; // No hacer nada si la cola está vacía
-    // Envía la acción directamente
+    if (currentQueue.length === 0) return;
     ws.send(
       JSON.stringify({
         type: "controlAction",
@@ -250,14 +239,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   skipBtn.addEventListener("click", () => {
-    if (currentQueue.length === 0) return; // No hacer nada si la cola está vacía
-    // Envía la acción directamente
+    if (currentQueue.length === 0) return;
     ws.send(
       JSON.stringify({ type: "controlAction", payload: { action: "skip" } })
     );
   });
 
-  // --- INICIALIZACIÓN ---
   setupName();
   if (myName) {
     initializeMainApp();

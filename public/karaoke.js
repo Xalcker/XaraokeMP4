@@ -1,36 +1,24 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- NUEVOS SELECTORES PARA EL MODAL ---
   const welcomeModal = document.getElementById("welcome-modal");
   const startBtn = document.getElementById("start-btn");
   const mainContainer = document.querySelector(".main-container");
-
-  // Selectores de la aplicación principal
   const player = document.getElementById("karaokePlayer");
   const songQueueContainer = document.getElementById("songQueue");
   const qrCodeImg = document.getElementById("qrCode");
   const songBrowser = document.getElementById("songBrowser");
 
-  let songData = {};
-  let currentQueue = [];
-  let ws;
-  let lastTimeUpdate = 0;
+  let songData = {},
+    currentQueue = [],
+    ws,
+    lastTimeUpdate = 0;
 
-  // --- NUEVO EVENT LISTENER PARA EL BOTÓN DE INICIO ---
   startBtn.addEventListener("click", () => {
-    // Oculta el modal y muestra la aplicación
     welcomeModal.classList.add("hidden");
     mainContainer.classList.remove("hidden");
-
-    // "Desbloquea" el audio intentando reproducir y pausar el video vacío.
-    // Esto le da permiso a la página para reproducir audio más tarde.
     player.play().catch((error) => {
-      console.log(
-        "El navegador necesita una interacción para empezar. Permiso concedido."
-      );
+      console.log("Permiso de audio concedido por el usuario.");
     });
     player.pause();
-
-    // Ahora que tenemos la interacción, inicializamos la app.
     connectWebSocket();
     initialize();
   });
@@ -39,10 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${protocol}://${window.location.host}`);
     ws.onopen = () => console.log("Host conectado al WebSocket");
-    ws.onclose = () => {
-      console.log("Host desconectado. Intentando reconectar...");
-      setTimeout(connectWebSocket, 3000);
-    };
+    ws.onclose = () => setTimeout(connectWebSocket, 3000);
     ws.onerror = (err) => console.error("Error de WebSocket en Host:", err);
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
@@ -88,7 +73,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderQueue() {
     songQueueContainer.innerHTML = "";
-    currentQueue.forEach((item) => {
+    // CAMBIO AQUÍ: Usamos .slice(1) para mostrar solo a partir del segundo elemento.
+    currentQueue.slice(1).forEach((item) => {
       const div = document.createElement("div");
       div.className = "queue-item";
       div.innerHTML = `<span class="song-name">${item.song.replace(
@@ -207,6 +193,4 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
-
-  // YA NO INICIAMOS LA APP AQUÍ, SINO EN EL CLIC DEL BOTÓN
 });
