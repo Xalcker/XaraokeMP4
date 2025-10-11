@@ -38,6 +38,7 @@ Sigue estos pasos para ejecutar el proyecto en tu máquina local.
     ```bash
     git clone [https://github.com/Xalcker/XaraokeMP4.git](https://github.com/Xalcker/XaraokeMP4.git)
     ```
+    También puedes hacer clic en [este enlace](https://github.com/Xalcker/XaraokeMP4) para ver el repositorio.
 2.  **Navega al directorio del proyecto:**
     ```bash
     cd XaraokeMP4
