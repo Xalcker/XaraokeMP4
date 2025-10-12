@@ -11,7 +11,8 @@ Un reproductor de karaoke interactivo basado en la web, construido con HTML5, No
 * **Explorador de Canciones Alfabético:** Navega por la biblioteca de canciones de forma intuitiva, filtrando por artista y luego seleccionando la canción.
 * **Cola de Reproducción Compartida:** Múltiples usuarios pueden ver y añadir canciones a la misma cola de reproducción en tiempo real.
 * **Controles de Reproducción:** Los controles remotos pueden pausar, reanudar y saltar canciones.
-* **Notificaciones Inteligentes:** El control remoto vibra y suena para avisar al usuario cuando su canción está a punto de empezar. (En pruebas)
+* **Notificaciones Inteligentes:** El control remoto vibra y suena para avisar al usuario cuando su canción está a punto de empezar.
+* **Salas virtuales:** Soporte de Salas virtuales con colas independientes.
 
 ---
 ## 🛠️ Stack Tecnológico
