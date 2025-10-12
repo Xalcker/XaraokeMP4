@@ -11,12 +11,31 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentSongTime = document.getElementById("current-song-time");
   const playPauseBtn = document.getElementById("playPauseBtn");
   const skipBtn = document.getElementById("skipBtn");
+  const remoteRoomCodeDisplay = document.getElementById("remote-room-code"); // Nuevo selector
 
   let songData = {},
     ws,
     myName = "",
     upNextSongId = null,
     currentQueue = [];
+  let roomId = null;
+
+  function initializeAppFlow() {
+    const urlParams = new URLSearchParams(window.location.search);
+    roomId = urlParams.get("sala");
+
+    if (!roomId) {
+      document.body.innerHTML =
+        "<h1>Error: Sala no especificada o no válida. Asegúrate de escanear el código QR correcto.</h1>";
+      return;
+    }
+
+    remoteRoomCodeDisplay.textContent = `SALA: ${roomId}`; // Muestra el código de sala
+    setupName();
+    if (myName) {
+      initializeMainApp();
+    }
+  }
 
   function setupName() {
     myName = localStorage.getItem("karaokeUserName") || "";
@@ -35,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (name) {
       localStorage.setItem("karaokeUserName", name);
       setupName();
-      if (!ws) initializeMainApp();
+      if (!ws || ws.readyState === WebSocket.CLOSED) initializeMainApp();
       else if (ws.readyState === WebSocket.OPEN)
         ws.send(JSON.stringify({ type: "getQueue" }));
     } else {
@@ -49,10 +68,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function connectWebSocket() {
+    if (!roomId) {
+      console.error("No hay ID de sala para conectar WebSocket.");
+      return;
+    }
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(`${protocol}://${window.location.host}`);
-    ws.onopen = () => console.log("Remoto conectado al WebSocket");
-    ws.onclose = () => setTimeout(connectWebSocket, 3000);
+    ws = new WebSocket(`${protocol}://${window.location.host}?sala=${roomId}`);
+
+    ws.onopen = () =>
+      console.log(`Remoto conectado al WebSocket de la sala: ${roomId}`);
+    ws.onclose = () => {
+      console.log(
+        `Remoto desconectado de la sala ${roomId}. Intentando reconectar...`
+      );
+      setTimeout(connectWebSocket, 3000);
+    };
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "queueUpdate") {
@@ -212,7 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
               payload: { song: filename, name: myName },
             })
           );
-          renderAlphabet(); // <-- CAMBIO AQUÍ: Vuelve al selector de letra.
+          renderAlphabet();
         }
       };
       songBrowser.appendChild(songEl);
@@ -244,8 +274,5 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
-  setupName();
-  if (myName) {
-    initializeMainApp();
-  }
+  initializeAppFlow();
 });

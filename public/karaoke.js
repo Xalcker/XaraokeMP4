@@ -1,38 +1,62 @@
 document.addEventListener("DOMContentLoaded", () => {
   const welcomeModal = document.getElementById("welcome-modal");
   const startBtn = document.getElementById("start-btn");
+  // CORRECCIÓN AQUÍ: Usamos querySelector para la clase en lugar de getElementById
   const mainContainer = document.querySelector(".main-container");
   const player = document.getElementById("karaokePlayer");
   const songBrowser = document.getElementById("songBrowser");
 
-  // --- SELECTORES PARA LA NUEVA INTERFAZ ---
+  // Selectores para la nueva interfaz
   const nowPlayingContent = document.getElementById("now-playing-content");
   const upNextContent = document.getElementById("up-next-content");
   const songQueueContainer = document.getElementById("songQueue");
   const qrCodeImg = document.getElementById("qrCode");
+  const roomCodeDisplay = document.getElementById("room-code");
 
   let songData = {},
     currentQueue = [],
     ws,
     lastTimeUpdate = 0;
+  let roomId = null;
 
-  startBtn.addEventListener("click", () => {
+  startBtn.addEventListener("click", async () => {
     welcomeModal.classList.add("hidden");
     mainContainer.classList.remove("hidden");
-    player.play().catch((error) => {
-      console.log("Permiso de audio/video concedido por el usuario.");
-    });
+    player
+      .play()
+      .catch((e) =>
+        console.log("Permiso de audio/video concedido por el usuario.")
+      );
     player.pause();
-    connectWebSocket();
-    initialize();
+
+    try {
+      const response = await fetch("/api/rooms", { method: "POST" });
+      const data = await response.json();
+      roomId = data.roomId;
+      roomCodeDisplay.textContent = roomId;
+
+      connectWebSocket();
+      initialize();
+    } catch (error) {
+      console.error("No se pudo crear la sala:", error);
+      alert("Error al crear la sala. Por favor, refresca la página.");
+    }
   });
 
   function connectWebSocket() {
+    if (!roomId) {
+      console.error("No hay ID de sala para conectar WebSocket.");
+      return;
+    }
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(`${protocol}://${window.location.host}`);
-    ws.onopen = () => console.log("Host conectado al WebSocket");
+    ws = new WebSocket(`${protocol}://${window.location.host}?sala=${roomId}`);
+
+    ws.onopen = () =>
+      console.log(`Host conectado al WebSocket de la sala: ${roomId}`);
     ws.onclose = () => {
-      console.log("Host desconectado. Intentando reconectar...");
+      console.log(
+        `Host desconectado de la sala ${roomId}. Intentando reconectar...`
+      );
       setTimeout(connectWebSocket, 3000);
     };
     ws.onerror = (err) => console.error("Error de WebSocket en Host:", err);
@@ -50,8 +74,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function initialize() {
+    if (!roomId) {
+      console.error("No hay ID de sala para inicializar.");
+      return;
+    }
     try {
-      const qrRes = await fetch("/api/qr");
+      const qrRes = await fetch(`/api/qr?sala=${roomId}`);
       const qrData = await qrRes.json();
       qrCodeImg.src = qrData.qrUrl;
 
@@ -79,12 +107,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${mins}:${secs}`;
   }
 
-  // --- NUEVA FUNCIÓN PARA FORMATEAR EL NOMBRE DE LA CANCIÓN ---
   function formatSongTitleForDisplay(fullFilename) {
     const parts = fullFilename.replace(".mp4", "").split(" - ");
     if (parts.length >= 2) {
       const artist = parts[0].trim();
-      const songTitle = parts.slice(1).join(" - ").trim(); // Une el resto para canciones con '-' en el título
+      const songTitle = parts.slice(1).join(" - ").trim();
       return { artist, songTitle };
     }
     return {
@@ -212,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
               payload: { song: filename, name: "Host" },
             })
           );
-          renderAlphabet(); // <-- CAMBIO AQUÍ: Vuelve al selector de letra.
+          renderAlphabet();
         }
       };
       songBrowser.appendChild(songEl);

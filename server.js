@@ -3,6 +3,7 @@ const express = require("express");
 const path = require("path");
 const http = require("http");
 const os = require("os");
+const { URL } = require("url");
 const {
   S3Client,
   ListObjectsV2Command,
@@ -25,7 +26,18 @@ const s3Client = new S3Client({
   forcePathStyle: true,
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
-let songQueue = [];
+
+let rooms = {};
+
+function generateRoomId() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let result = "";
+  for (let i = 0; i < 4; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  if (rooms[result]) return generateRoomId();
+  return result;
+}
 
 app.get("/api/songs", async (req, res) => {
   const params = { Bucket: BUCKET_NAME, Prefix: "MP4/" };
@@ -36,6 +48,7 @@ app.get("/api/songs", async (req, res) => {
       .map((item) => item.Key)
       .filter((key) => key.toLowerCase().endsWith(".mp4") && key !== "MP4/")
       .map((key) => key.substring(4));
+
     const structuredSongs = {};
     songsList.forEach((filename) => {
       const parts = filename.split(" - ");
@@ -43,6 +56,7 @@ app.get("/api/songs", async (req, res) => {
       const artist = parts[0].trim();
       let firstLetter = artist.charAt(0).toUpperCase();
       if (!isNaN(parseInt(firstLetter))) firstLetter = "#";
+
       if (!structuredSongs[firstLetter]) structuredSongs[firstLetter] = {};
       if (!structuredSongs[firstLetter][artist])
         structuredSongs[firstLetter][artist] = [];
@@ -64,7 +78,8 @@ app.get("/api/song-url", async (req, res) => {
   const params = { Bucket: BUCKET_NAME, Key: `MP4/${song}` };
   try {
     const command = new GetObjectCommand(params);
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    // CAMBIO AQUÍ: Duración de la URL prefirmada a 20 segundos
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 20 });
     res.json({ url });
   } catch (error) {
     console.error("Error al generar la URL prefirmada:", error);
@@ -72,16 +87,25 @@ app.get("/api/song-url", async (req, res) => {
   }
 });
 
-// --- ¡AJUSTE CRÍTICO EN LA LÓGICA DEL QR! ---
+app.post("/api/rooms", (req, res) => {
+  const roomId = generateRoomId();
+  rooms[roomId] = {
+    songQueue: [],
+    clients: new Set(),
+  };
+  console.log(`Sala creada: ${roomId}`);
+  res.json({ roomId });
+});
+
 app.get("/api/qr", (req, res) => {
+  const { sala } = req.query;
+  if (!sala) return res.status(400).send("Falta el ID de la sala");
+
   let baseUrl;
   const isProduction = process.env.NODE_ENV === "production";
-
   if (isProduction && req.headers.host) {
-    // En PRODUCCIÓN (Render), usamos el host de la petición y HTTPS
     baseUrl = `https://${req.headers.host}`;
   } else {
-    // En DESARROLLO LOCAL, obtenemos la IP de la red local y usamos HTTP
     const networkInterfaces = os.networkInterfaces();
     let localIp = "localhost";
     const candidates = [];
@@ -100,14 +124,15 @@ app.get("/api/qr", (req, res) => {
     baseUrl = `http://${localIp}:${PORT}`;
   }
 
-  const remoteUrl = `${baseUrl}/remote.html`;
-  console.log(`✅ URL del control remoto generada: ${remoteUrl}`);
+  const remoteUrl = `${baseUrl}/remote.html?sala=${sala}`;
+  console.log(
+    `✅ URL del control remoto generada para la sala ${sala}: ${remoteUrl}`
+  );
   QRCode.toDataURL(remoteUrl, (err, url) => {
     if (err) res.status(500).send("Error generando QR");
     else res.send({ qrUrl: url, remoteUrl });
   });
 });
-// --- FIN DEL AJUSTE ---
 
 app.get("/favicon.ico", (req, res) => res.status(204).send());
 app.use(express.static(path.join(__dirname, "public")));
@@ -115,50 +140,94 @@ app.use(express.static(path.join(__dirname, "public")));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-wss.broadcast = (data) =>
-  wss.clients.forEach((c) => {
-    if (c.readyState === WebSocket.OPEN) c.send(data);
-  });
+function broadcastToRoom(roomId, data) {
+  const room = rooms[roomId];
+  if (room) {
+    room.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    });
+  }
+}
 
-wss.on("connection", (ws) => {
-  console.log("Cliente WebSocket conectado");
-  ws.send(JSON.stringify({ type: "queueUpdate", payload: songQueue }));
+wss.on("connection", (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const roomId = url.searchParams.get("sala");
+
+  const room = rooms[roomId];
+  if (!room) {
+    console.log(`Intento de conexión a sala inexistente: ${roomId}`);
+    ws.close();
+    return;
+  }
+
+  ws.roomId = roomId;
+  room.clients.add(ws);
+  console.log(
+    `Cliente conectado a la sala: ${roomId}. Total en sala: ${room.clients.size}`
+  );
+
+  ws.send(JSON.stringify({ type: "queueUpdate", payload: room.songQueue }));
 
   ws.on("message", (message) => {
     const data = JSON.parse(message);
+    const currentRoom = rooms[ws.roomId];
+    if (!currentRoom) return;
+
     let updateQueue = false;
 
     switch (data.type) {
       case "addSong":
-        songQueue.push({ ...data.payload, id: Date.now() });
+        currentRoom.songQueue.push({ ...data.payload, id: Date.now() });
         updateQueue = true;
         break;
       case "removeSong":
-        songQueue = songQueue.filter(
+        currentRoom.songQueue = currentRoom.songQueue.filter(
           (song) =>
             !(song.id === data.payload.id && song.name === data.payload.name)
         );
         updateQueue = true;
         break;
       case "playNext":
-        if (songQueue.length > 0) songQueue.shift();
+        if (currentRoom.songQueue.length > 0) currentRoom.songQueue.shift();
         updateQueue = true;
         break;
       case "controlAction":
-        wss.broadcast(JSON.stringify(data));
+        broadcastToRoom(ws.roomId, JSON.stringify(data));
         break;
       case "getQueue":
-        ws.send(JSON.stringify({ type: "queueUpdate", payload: songQueue }));
+        ws.send(
+          JSON.stringify({
+            type: "queueUpdate",
+            payload: currentRoom.songQueue,
+          })
+        );
         break;
       case "timeUpdate":
-        wss.broadcast(JSON.stringify(data));
+        broadcastToRoom(ws.roomId, JSON.stringify(data));
         break;
     }
 
     if (updateQueue) {
-      wss.broadcast(
-        JSON.stringify({ type: "queueUpdate", payload: songQueue })
+      broadcastToRoom(
+        ws.roomId,
+        JSON.stringify({ type: "queueUpdate", payload: currentRoom.songQueue })
       );
+    }
+  });
+
+  ws.on("close", () => {
+    const room = rooms[ws.roomId];
+    if (room) {
+      room.clients.delete(ws);
+      console.log(
+        `Cliente desconectado de la sala: ${ws.roomId}. Clientes restantes: ${room.clients.size}`
+      );
+      if (room.clients.size === 0) {
+        console.log(`Sala ${ws.roomId} vacía. Eliminando sala.`);
+        delete rooms[ws.roomId];
+      }
     }
   });
 });
