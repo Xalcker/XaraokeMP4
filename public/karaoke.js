@@ -1,3 +1,4 @@
+// Este archivo NO necesita cambios, solo se incluye para la referencia completa
 document.addEventListener("DOMContentLoaded", () => {
   const welcomeModal = document.getElementById("welcome-modal");
   const startBtn = document.getElementById("start-btn");
