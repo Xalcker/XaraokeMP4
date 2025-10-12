@@ -1,20 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
   const welcomeModal = document.getElementById("welcome-modal");
   const startBtn = document.getElementById("start-btn");
-  // CORRECCIÓN AQUÍ: Usamos querySelector para la clase en lugar de getElementById
   const mainContainer = document.querySelector(".main-container");
   const player = document.getElementById("karaokePlayer");
-  const songBrowser = document.getElementById("songBrowser");
 
-  // Selectores para la nueva interfaz
   const nowPlayingContent = document.getElementById("now-playing-content");
   const upNextContent = document.getElementById("up-next-content");
   const songQueueContainer = document.getElementById("songQueue");
   const qrCodeImg = document.getElementById("qrCode");
   const roomCodeDisplay = document.getElementById("room-code");
 
-  let songData = {},
-    currentQueue = [],
+  let currentQueue = [],
     ws,
     lastTimeUpdate = 0;
   let roomId = null;
@@ -22,19 +18,13 @@ document.addEventListener("DOMContentLoaded", () => {
   startBtn.addEventListener("click", async () => {
     welcomeModal.classList.add("hidden");
     mainContainer.classList.remove("hidden");
-    player
-      .play()
-      .catch((e) =>
-        console.log("Permiso de audio/video concedido por el usuario.")
-      );
+    player.play().catch((e) => console.log("Permiso de audio concedido."));
     player.pause();
-
     try {
       const response = await fetch("/api/rooms", { method: "POST" });
       const data = await response.json();
       roomId = data.roomId;
       roomCodeDisplay.textContent = roomId;
-
       connectWebSocket();
       initialize();
     } catch (error) {
@@ -44,21 +34,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function connectWebSocket() {
-    if (!roomId) {
-      console.error("No hay ID de sala para conectar WebSocket.");
-      return;
-    }
+    if (!roomId) return;
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${protocol}://${window.location.host}?sala=${roomId}`);
 
-    ws.onopen = () =>
-      console.log(`Host conectado al WebSocket de la sala: ${roomId}`);
-    ws.onclose = () => {
-      console.log(
-        `Host desconectado de la sala ${roomId}. Intentando reconectar...`
-      );
-      setTimeout(connectWebSocket, 3000);
-    };
+    ws.onopen = () => console.log(`Host conectado a la sala: ${roomId}`);
+    ws.onclose = () => setTimeout(connectWebSocket, 3000);
     ws.onerror = (err) => console.error("Error de WebSocket en Host:", err);
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
@@ -74,19 +55,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function initialize() {
-    if (!roomId) {
-      console.error("No hay ID de sala para inicializar.");
-      return;
-    }
+    if (!roomId) return;
     try {
       const qrRes = await fetch(`/api/qr?sala=${roomId}`);
       const qrData = await qrRes.json();
       qrCodeImg.src = qrData.qrUrl;
-
-      const songsRes = await fetch("/api/songs");
-      songData = await songsRes.json();
-
-      renderAlphabet();
     } catch (error) {
       console.error("Error durante la inicialización:", error);
     }
@@ -163,12 +136,9 @@ document.addEventListener("DOMContentLoaded", () => {
       div.innerHTML = `<span class="song-name">${songTitle}</span><span class="user-name">(${artist}) por ${item.name}</span>`;
       songQueueContainer.appendChild(div);
     });
-    if (upcoming.length === 0 && currentQueue.length > 1) {
-      const div = document.createElement("div");
-      div.className = "queue-item";
-      div.textContent = "No hay más canciones en cola.";
-      songQueueContainer.appendChild(div);
-    } else if (currentQueue.length <= 1) {
+    if (upcoming.length === 0 && currentQueue.length > 2) {
+      // No hacemos nada, ya que la lista está vacía
+    } else if (currentQueue.length <= 2) {
       const div = document.createElement("div");
       div.className = "queue-item";
       div.textContent = "No hay más canciones en cola.";
@@ -190,68 +160,6 @@ document.addEventListener("DOMContentLoaded", () => {
         ws.send(JSON.stringify({ type: "playNext" }));
         break;
     }
-  }
-
-  function renderAlphabet() {
-    songBrowser.innerHTML = "";
-    const container = document.createElement("div");
-    container.className = "alphabet-container";
-    const alphabet = "#ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-    alphabet.forEach((letter) => {
-      if (songData[letter]) {
-        const letterEl = document.createElement("div");
-        letterEl.className = "alphabet-item";
-        letterEl.textContent = letter;
-        letterEl.onclick = () => renderArtists(letter);
-        container.appendChild(letterEl);
-      }
-    });
-    songBrowser.appendChild(container);
-  }
-
-  function renderArtists(letter) {
-    songBrowser.innerHTML = "";
-    addBackButton(renderAlphabet);
-    const artists = Object.keys(songData[letter]).sort();
-    artists.forEach((artist) => {
-      const artistEl = document.createElement("div");
-      artistEl.className = "browser-item";
-      artistEl.textContent = `🎤 ${artist}`;
-      artistEl.onclick = () => renderSongs(letter, artist);
-      songBrowser.appendChild(artistEl);
-    });
-  }
-
-  function renderSongs(letter, artist) {
-    songBrowser.innerHTML = "";
-    addBackButton(() => renderArtists(letter));
-    const songs = songData[letter][artist];
-    songs.forEach((filename) => {
-      const songTitle = filename.split(" - ")[1].replace(".mp4", "");
-      const songEl = document.createElement("div");
-      songEl.className = "browser-item";
-      songEl.textContent = `🎵 ${songTitle}`;
-      songEl.onclick = () => {
-        if (confirm(`¿Añadir "${songTitle}" a la cola?`)) {
-          ws.send(
-            JSON.stringify({
-              type: "addSong",
-              payload: { song: filename, name: "Host" },
-            })
-          );
-          renderAlphabet();
-        }
-      };
-      songBrowser.appendChild(songEl);
-    });
-  }
-
-  function addBackButton(onClickAction) {
-    const backBtn = document.createElement("div");
-    backBtn.className = "back-btn";
-    backBtn.textContent = "← Volver";
-    backBtn.onclick = onClickAction;
-    songBrowser.appendChild(backBtn);
   }
 
   function checkAndPlayNext() {
@@ -278,9 +186,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  player.addEventListener("ended", () => {
-    ws.send(JSON.stringify({ type: "playNext" }));
-  });
+  player.addEventListener("ended", () =>
+    ws.send(JSON.stringify({ type: "playNext" }))
+  );
 
   player.addEventListener("loadedmetadata", () => {
     const durationEl = document.getElementById("song-duration");

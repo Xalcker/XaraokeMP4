@@ -3,34 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Remoto Karaoke</title>
+    <title>XaraokeMP4 Remote</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #fff; margin: 0; padding: 1rem; }
         .container { max-width: 600px; margin: auto; }
         h1, h2 { text-align: center; }
         h2 { margin-top: 2rem; color: #ccc; text-transform: uppercase; font-size: 1rem; letter-spacing: 1px; }
-
-        /* --- ESTILOS PARA EL MODAL DE NOMBRE --- */
-        #name-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 10;
-        }
+        #name-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
         #name-modal-content { text-align: center; padding: 20px; }
         #initialNameInput { width: 80%; padding: 12px; margin-bottom: 1rem; border-radius: 5px; border: 1px solid #444; background-color: #333; color: #fff; font-size: 1.2rem; text-align: center; }
         #saveNameBtn { padding: 12px 30px; font-size: 1.2rem; border: none; border-radius: 25px; color: white; background-color: #1DB954; cursor: pointer; }
-
-        /* --- ESTILOS PARA MOSTRAR/OCULTAR CONTENIDO --- */
         .hidden { display: none !important; }
-
-        /* --- ESTILOS PARA DISPLAY DE NOMBRE Y SALA --- */
         #user-display { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 1rem; background-color: #282828; padding: 8px; border-radius: 20px; }
         #changeNameBtn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #fff; }
-        /* Nuevo estilo para el código de sala */
         #remote-room-code { text-align: center; font-size: 1.5rem; font-weight: bold; letter-spacing: 3px; margin-top: -1rem; margin-bottom: 1rem; color: #1DB954; }
-
-
         #now-playing-info { text-align: center; margin-bottom: 1rem; min-height: 4em; background-color: #1f1f1f; padding: 10px; border-radius: 8px; }
         #current-song-title { font-weight: bold; }
         #current-song-time { font-size: 0.9em; color: #b3b3b3; }
@@ -54,39 +40,33 @@
 <body>
     <div id="name-modal">
         <div id="name-modal-content">
-            <h1>¡Bienvenido al Karaoke!</h1>
+            <h1>¡Bienvenido a XaraokeMP4!</h1>
             <p>Por favor, introduce tu nombre para empezar.</p>
             <input type="text" id="initialNameInput" placeholder="Tu nombre...">
             <button id="saveNameBtn">Guardar</button>
         </div>
     </div>
-
     <div id="main-content" class="container hidden">
         <h1>🎤 Control Remoto 🎶</h1>
         <div id="remote-room-code">SALA: ----</div> 
-
         <div id="now-playing-info">
             <div id="current-song-title">Cargando...</div>
             <div id="current-song-time"></div>
         </div>
-
         <div id="controls">
             <button id="playPauseBtn" class="control-btn">▶️ Play / Pausa ⏸️</button>
             <button id="skipBtn" class="control-btn">⏭️ Saltar Canción</button>
         </div>
-
         <div id="user-display">
             <span id="userNameDisplay"></span>
             <button id="changeNameBtn">✏️</button>
         </div>
-
         <div id="songBrowser"></div>
         <div id="queue-container">
             <h2>Cola Actual</h2>
             <div id="songQueue"></div>
         </div>
     </div>
-
     <script src="remote.js"></script>
 </body>
 </html>
