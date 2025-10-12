@@ -78,8 +78,8 @@ app.get("/api/song-url", async (req, res) => {
   const params = { Bucket: BUCKET_NAME, Key: `MP4/${song}` };
   try {
     const command = new GetObjectCommand(params);
-    // CAMBIO AQUÍ: Duración de la URL prefirmada a 20 segundos
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 20 });
+    // CAMBIO AQUÍ: Duración de la URL prefirmada a 1 segundo
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 1 });
     res.json({ url });
   } catch (error) {
     console.error("Error al generar la URL prefirmada:", error);
