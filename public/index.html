@@ -7,7 +7,9 @@
     
     <script>
         (function() {
-            if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            const isMobileUserAgent = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+            const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+            if (isMobileUserAgent && hasCoarsePointer) {
                 let roomCode = prompt("Introduce el código de 4 letras de la sala que ves en la pantalla principal:", "");
                 if (roomCode && roomCode.trim().length === 4) {
                     window.location.href = `/remote.html?sala=${roomCode.trim().toUpperCase()}`;
@@ -26,7 +28,7 @@
             margin: 0; 
             display: flex; 
             justify-content: center; 
-            align-items: center; 
+            align-items: center;
             height: 100vh; 
             overflow: hidden;
         }
@@ -46,23 +48,22 @@
             display: flex; 
             gap: 1.5rem; 
             width: 98%; 
-            /* Aumentamos el max-width para 4K, o lo quitamos si queremos que ocupe todo */
-            max-width: 3000px; /* Permitirá que se estire más en pantallas grandes */
+            /* ELIMINADO: max-width para que el contenedor sea fluido */
             height: 95vh; 
         }
         .sidebar-left { 
-            flex: 1; /* Ocupará 1 parte */
+            flex: 1.5;
             display: flex; 
             flex-direction: column; 
             gap: 1.5rem; 
         }
         .player-column { 
-            flex: 4; /* Ocupará 4 partes, es decir 4 veces el tamaño de una sidebar */
+            flex: 8;
             display: flex; 
-            min-width: 0; /* Permite que el video se encoja correctamente */
+            min-width: 0;
         }
         .sidebar-right { 
-            flex: 1; /* Ocupará 1 parte */
+            flex: 1.5;
             display: flex; 
             flex-direction: column; 
             gap: 1.5rem; 
@@ -74,7 +75,7 @@
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            flex-shrink: 0; /* Evita que las secciones se encojan demasiado */
+            flex-shrink: 0;
         }
         
         video { 
@@ -83,7 +84,7 @@
             background-color: #000; 
             border-radius: 10px; 
             object-fit: contain; 
-            aspect-ratio: 16/9; /* Mantiene la proporción del video */
+            aspect-ratio: 16/9;
         }
         h3 { 
             margin-top: 0; 
@@ -102,40 +103,31 @@
         #qr-container p { text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem; }
         #qr-container img { max-width: 100%; display: block; margin: 0 auto; border: 5px solid white; border-radius: 5px; }
 
-        #queue-container { flex-grow: 1; min-height: 0; } /* La cola puede crecer para ocupar espacio */
+        #queue-container { flex-grow: 1; min-height: 0; }
         #songQueue { overflow-y: auto; }
         .queue-item { display: flex; justify-content: space-between; padding: 8px; border-radius: 5px; font-size: 0.9rem; }
         .queue-item:nth-child(odd) { background-color: #282828; }
         .queue-item .song-name { font-weight: bold; }
         .queue-item .user-name { font-style: italic; color: #aaa; margin-left: 1rem; white-space: nowrap; }
         
-        /* --- NUEVO: CSS RESPONSIVO PARA PANTALLAS PEQUEÑAS --- */
-        @media (max-width: 1280px) {
-            body { height: auto; overflow: auto; padding: 1rem 0; }
-            .main-container {
-                flex-direction: column;
-                height: auto;
-                width: 95%;
+        /* ELIMINADO: El media query para 2560px que limitaba el ancho. */
+
+        @media (max-width: 1920px) { /* Por debajo de Full HD (y aplica a resoluciones menores) */
+            body { align-items: flex-start; padding-top: 2vh; }
+            .main-container { 
+                transform: scale(0.9);
+                transform-origin: top center; 
+                height: 95vh;
             }
-            .player-column {
-                order: 1; /* El video aparece primero */
-            }
-            .sidebar-left {
-                order: 2; /* Luego la barra izquierda */
-                flex-direction: row; /* Elementos lado a lado */
-                justify-content: space-around;
-                align-items: center;
-            }
-            .sidebar-right {
-                order: 3; /* Finalmente la barra derecha */
-            }
-            #now-playing, #up-next, #qr-container {
-                flex: 1; /* Distribuye el espacio equitativamente en la fila */
-                min-width: 250px; /* Asegura un ancho mínimo para cada sección */
-            }
-            #queue-container {
-                min-height: 200px; 
-            }
+        }
+
+        @media (max-width: 1280px) { 
+             body { align-items: flex-start; padding-top: 2vh; }
+             .main-container { 
+                transform: scale(0.68);
+                transform-origin: top center; 
+                height: 95vh;
+             }
         }
     </style>
 </head>
@@ -175,6 +167,7 @@
             </div>
             <div id="qr-container" class="sidebar-section">
                 <h3>📲 Control Remoto</h3>
+                <p style="text-align: center; margin-bottom: 0.5rem; font-size: 1.2rem; font-weight: bold;">Sala:</p> 
                 <div id="room-code" style="text-align: center; font-size: 2rem; font-weight: bold; letter-spacing: 5px; margin-bottom: 1rem; color: #1DB954;">----</div>
                 <p>Escanea para añadir canciones</p>
                 <img id="qrCode" src="" alt="QR Code">

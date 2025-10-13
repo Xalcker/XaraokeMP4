@@ -1,8 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // --- Selectores de Elementos del DOM ---
+  // Modal de nombre
   const nameModal = document.getElementById("name-modal");
   const mainContent = document.getElementById("main-content");
   const initialNameInput = document.getElementById("initialNameInput");
   const saveNameBtn = document.getElementById("saveNameBtn");
+  // Interfaz principal
   const userNameDisplay = document.getElementById("userNameDisplay");
   const changeNameBtn = document.getElementById("changeNameBtn");
   const songQueueContainer = document.getElementById("songQueue");
@@ -11,32 +14,72 @@ document.addEventListener("DOMContentLoaded", () => {
   const currentSongTime = document.getElementById("current-song-time");
   const playPauseBtn = document.getElementById("playPauseBtn");
   const skipBtn = document.getElementById("skipBtn");
-  const remoteRoomCodeDisplay = document.getElementById("remote-room-code"); // Nuevo selector
+  const remoteRoomCodeDisplay = document.getElementById("remote-room-code");
 
-  let songData = {},
-    ws,
-    myName = "",
-    upNextSongId = null,
-    currentQueue = [];
-  let roomId = null;
+  // --- Variables de Estado de la Aplicación ---
+  let songData = {}; // Objeto con la lista de canciones estructurada
+  let ws; // La conexión WebSocket
+  let myName = ""; // Nombre del usuario actual
+  let upNextSongId = null; // ID de la canción para la que ya se notificó
+  let currentQueue = []; // Copia local de la cola de canciones
+  let roomId = null; // ID de la sala actual
 
-  function initializeAppFlow() {
+  // --- LÓGICA DE INICIALIZACIÓN Y GESTIÓN DE SALA/NOMBRE ---
+
+  // Función principal que se ejecuta al cargar la página
+  async function initializeAppFlow() {
+    // Extrae el ID de la sala de los parámetros de la URL (ej. ?sala=ABCD)
     const urlParams = new URLSearchParams(window.location.search);
-    roomId = urlParams.get("sala");
+    roomId = urlParams.get("sala")?.toUpperCase();
 
+    // Si no hay ID de sala, o es inválido, pide uno nuevo
     if (!roomId) {
-      document.body.innerHTML =
-        "<h1>Error: Sala no especificada o no válida. Asegúrate de escanear el código QR correcto.</h1>";
+      handleInvalidRoom("No se encontró código de sala.");
       return;
     }
 
-    remoteRoomCodeDisplay.textContent = `SALA: ${roomId}`; // Muestra el código de sala
+    // Verifica si la sala existe en el servidor antes de continuar
+    try {
+      const response = await fetch(`/api/rooms/${roomId}`);
+      const data = await response.json();
+      if (!data.exists) {
+        handleInvalidRoom(`La sala "${roomId}" no existe o ha expirado.`);
+        return;
+      }
+    } catch (error) {
+      console.error("Error verificando la sala:", error);
+      handleInvalidRoom(
+        "No se pudo conectar con el servidor para verificar la sala."
+      );
+      return;
+    }
+
+    // Si la sala es válida, la muestra en la UI y continúa con la configuración del nombre
+    remoteRoomCodeDisplay.textContent = `SALA: ${roomId}`;
     setupName();
+    // Si ya tenemos un nombre de usuario guardado, iniciamos la app principal
     if (myName) {
       initializeMainApp();
     }
   }
 
+  // Muestra un error y pide un nuevo código de sala
+  function handleInvalidRoom(message) {
+    alert(message);
+    let newRoomCode = prompt(
+      "Por favor, introduce el código de 4 letras de la sala:",
+      ""
+    );
+    if (newRoomCode && newRoomCode.trim().length === 4) {
+      // Recarga la página con el nuevo código para reintentar la conexión
+      window.location.search = `?sala=${newRoomCode.trim().toUpperCase()}`;
+    } else {
+      document.body.innerHTML =
+        "<h1>Código inválido. Por favor, escanea el QR de nuevo.</h1>";
+    }
+  }
+
+  // Carga el nombre de usuario desde localStorage o muestra el modal para introducirlo
   function setupName() {
     myName = localStorage.getItem("karaokeUserName") || "";
     if (myName) {
@@ -49,11 +92,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Se ejecuta al hacer clic en "Guardar" en el modal de nombre
   saveNameBtn.addEventListener("click", () => {
     const name = initialNameInput.value.trim();
     if (name) {
       localStorage.setItem("karaokeUserName", name);
       setupName();
+      // Si es la primera vez (no hay WebSocket), inicia la app. Si no, solo pide la cola actualizada.
       if (!ws || ws.readyState === WebSocket.CLOSED) initializeMainApp();
       else if (ws.readyState === WebSocket.OPEN)
         ws.send(JSON.stringify({ type: "getQueue" }));
@@ -62,39 +107,44 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Se ejecuta al hacer clic en el botón de editar nombre
   changeNameBtn.addEventListener("click", () => {
-    initialNameInput.value = myName;
-    nameModal.classList.remove("hidden");
+    initialNameInput.value = myName; // Precarga el nombre actual
+    nameModal.classList.remove("hidden"); // Muestra el modal
   });
 
+  // --- LÓGICA DE WEBSOCKET Y CARGA DE DATOS ---
+
+  // Establece la conexión WebSocket con el servidor para la sala actual
   function connectWebSocket() {
-    if (!roomId) {
-      console.error("No hay ID de sala para conectar WebSocket.");
-      return;
-    }
+    if (!roomId) return;
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${protocol}://${window.location.host}?sala=${roomId}`);
 
     ws.onopen = () =>
       console.log(`Remoto conectado al WebSocket de la sala: ${roomId}`);
-    ws.onclose = () => {
-      console.log(
-        `Remoto desconectado de la sala ${roomId}. Intentando reconectar...`
-      );
-      setTimeout(connectWebSocket, 3000);
+    ws.onclose = (event) => {
+      // Si la sala fue cerrada por el servidor, muestra el error
+      if (event.code === 4004) {
+        handleInvalidRoom("La sala ya no existe. Introduce un nuevo código.");
+      } else {
+        console.log(`Remoto desconectado. Intentando reconectar...`);
+        setTimeout(connectWebSocket, 3000);
+      }
     };
+    // Maneja los mensajes entrantes del servidor
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "queueUpdate") {
-        const queue = message.payload;
-        renderQueue(queue);
-        if (queue.length === 0) {
+        renderQueue(message.payload);
+        if (message.payload.length === 0) {
           currentSongTitle.textContent = "La cola está vacía";
           currentSongTime.textContent = "";
         }
       }
       if (message.type === "timeUpdate") {
         updateNowPlaying(message.payload);
+        // Lógica de notificación
         const data = message.payload;
         if (!data || !data.duration) return;
         const remainingTime = data.duration - data.currentTime;
@@ -112,6 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error de WebSocket en remoto:", error);
   }
 
+  // Conecta el WebSocket y carga la lista de canciones
   async function initializeMainApp() {
     connectWebSocket();
     try {
@@ -124,15 +175,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- FUNCIONES DE RENDERIZADO Y UTILIDADES ---
+
+  // Dibuja la cola de canciones en la UI
   function renderQueue(queue) {
     currentQueue = queue;
     songQueueContainer.innerHTML = "";
+    // Muestra solo las canciones que están "en espera" (ignora la primera)
     queue.slice(1).forEach((item) => {
       const div = document.createElement("div");
       div.className = "queue-item";
       div.innerHTML = `<span><b>${item.song.replace(".mp4", "")}</b> (${
         item.name
       })</span>`;
+      // Añade botón "Quitar" si la canción es del usuario actual
       if (item.name === myName && myName !== "") {
         const removeBtn = document.createElement("button");
         removeBtn.textContent = "Quitar";
@@ -149,12 +205,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       songQueueContainer.appendChild(div);
     });
+    // Reinicia el estado de notificación si la siguiente canción ya no es del usuario
     const nextSongIsMine = queue.length > 1 && queue[1].name === myName;
     if (!nextSongIsMine) {
       upNextSongId = null;
     }
   }
 
+  // Actualiza la información de la canción que se está reproduciendo
   function updateNowPlaying(data) {
     if (!data || !data.song) {
       currentSongTitle.textContent = "La cola está vacía";
@@ -171,6 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     )} / ${formatTime(data.duration)} (Faltan ${formatTime(remainingTime)})`;
   }
 
+  // Activa la vibración y el sonido de notificación
   function notifyUser() {
     console.log("¡Tu canción sigue en 10 segundos!");
     if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
@@ -182,6 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
   }
 
+  // Formatea segundos a un formato "minutos:segundos"
   function formatTime(seconds) {
     if (isNaN(seconds) || seconds < 0) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -191,6 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${mins}:${secs}`;
   }
 
+  // --- FUNCIONES DEL EXPLORADOR DE CANCIONES ---
   function renderAlphabet() {
     songBrowser.innerHTML = "";
     const container = document.createElement("div");
@@ -242,7 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
               payload: { song: filename, name: myName },
             })
           );
-          renderAlphabet();
+          renderAlphabet(); // Regresa al selector de letras
         }
       };
       songBrowser.appendChild(songEl);
@@ -257,6 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
     songBrowser.appendChild(backBtn);
   }
 
+  // --- EVENT LISTENERS DE LOS BOTONES DE CONTROL ---
   playPauseBtn.addEventListener("click", () => {
     if (currentQueue.length === 0) return;
     ws.send(
@@ -274,5 +336,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
+  // Inicia el flujo de la aplicación al cargar la página
   initializeAppFlow();
 });
