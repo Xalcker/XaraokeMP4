@@ -84,6 +84,7 @@
             background-color: #000; 
             border-radius: 10px; 
             object-fit: contain; 
+            image-rendering: crisp-edges
             aspect-ratio: 16/9;
         }
         h3 { 
@@ -110,25 +111,6 @@
         .queue-item .song-name { font-weight: bold; }
         .queue-item .user-name { font-style: italic; color: #aaa; margin-left: 1rem; white-space: nowrap; }
         
-        /* ELIMINADO: El media query para 2560px que limitaba el ancho. */
-
-        @media (max-width: 1920px) { /* Por debajo de Full HD (y aplica a resoluciones menores) */
-            body { align-items: flex-start; padding-top: 2vh; }
-            .main-container { 
-                transform: scale(0.9);
-                transform-origin: top center; 
-                height: 95vh;
-            }
-        }
-
-        @media (max-width: 1280px) { 
-             body { align-items: flex-start; padding-top: 2vh; }
-             .main-container { 
-                transform: scale(0.68);
-                transform-origin: top center; 
-                height: 95vh;
-             }
-        }
     </style>
 </head>
 <body>
